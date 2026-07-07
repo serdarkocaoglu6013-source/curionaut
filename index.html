@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Curionaut</title>
+<style>
+  :root{
+    --bg:#0b0e14; --card:#151a23; --card2:#1c2430; --line:#26303f;
+    --tx:#e7edf5; --mut:#93a1b3; --acc:#4aa8ff; --acc2:#2b6fb0;
+    --ok:#39d98a; --warn:#ffcc55; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%}
+  header{position:sticky;top:0;z-index:10;background:rgba(11,14,20,.92);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+    padding:14px 16px calc(14px + env(safe-area-inset-top,0)) 16px}
+  header h1{margin:0;font-size:20px;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+  header h1 .dot{width:10px;height:10px;border-radius:50%;background:var(--acc)}
+  .wrap{max-width:680px;margin:0 auto;padding:16px}
+  .muted{color:var(--mut);font-size:13px;line-height:1.5}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  input,select,button,textarea{font:inherit}
+  input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);
+    background:var(--card);color:var(--tx)}
+  label{font-size:12px;color:var(--mut);display:block;margin:10px 0 5px}
+  button{cursor:pointer;border:1px solid var(--line);background:var(--card2);color:var(--tx);
+    padding:10px 14px;border-radius:10px;font-weight:600}
+  button:active{transform:translateY(1px)}
+  .btn-primary{background:linear-gradient(180deg,var(--acc),var(--acc2));border-color:var(--acc2);
+    color:#fff;width:100%;padding:15px;font-size:16px;border-radius:12px;margin-top:6px}
+  .btn-primary:disabled{opacity:.55;cursor:default}
+  details.settings{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:6px 14px;margin-bottom:14px}
+  details.settings summary{cursor:pointer;padding:8px 0;font-weight:600;font-size:14px}
+  .status{margin:12px 0;font-size:14px;min-height:20px}
+  .bar{height:6px;background:var(--card2);border-radius:6px;overflow:hidden;margin-top:8px}
+  .bar > i{display:block;height:100%;width:0;background:var(--acc);transition:width .3s}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px;margin:14px 0;overflow:hidden}
+  .cat{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.6px;padding:3px 9px;border-radius:999px;background:var(--card2);color:var(--acc)}
+  .flag{float:right;font-size:16px}
+  .ttl{font-weight:700;margin:8px 0 4px;font-size:15px}
+  .tweet{white-space:pre-wrap;line-height:1.55;margin:8px 0;font-size:15px}
+  .reply{white-space:pre-wrap;line-height:1.5;margin:6px 0;font-size:14px;color:#cdd8e6;
+    border-left:3px solid var(--acc2);padding-left:10px}
+  .tr{font-size:12.5px;color:var(--mut);margin:8px 0;line-height:1.5}
+  .imgbox{position:relative;margin:10px 0;border-radius:12px;overflow:hidden;
+    background:var(--card2);aspect-ratio:16/9;display:flex;align-items:center;justify-content:center}
+  .imgbox img{width:100%;height:100%;object-fit:cover;display:block}
+  .imgbox .ph{color:var(--mut);font-size:13px}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .acts button{flex:1;min-width:calc(50% - 4px);font-size:13px;padding:9px}
+  .x{background:#111;border-color:#333;color:#fff}
+  .sub{font-size:11px;color:var(--mut);margin-top:2px}
+  a{color:var(--acc)}
+  .err{color:var(--bad)}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="dot"></span> Curionaut</h1>
+  <div class="muted" id="sub">Günün 13 tweet'ini üret · görselleriyle</div>
+</header>
+
+<div class="wrap">
+  <details class="settings" id="settingsBox">
+    <summary>⚙️ Ayarlar</summary>
+    <label>Gemini API anahtarı (ücretsiz — aistudio.google.com/apikey)</label>
+    <input id="key" type="password" placeholder="AIza...">
+    <label>Model</label>
+    <select id="model">
+      <option value="gemini-2.5-flash">gemini-2.5-flash (önerilen)</option>
+      <option value="gemini-2.0-flash">gemini-2.0-flash (hızlı, kısa)</option>
+      <option value="gemini-2.5-pro">gemini-2.5-pro (daha kaliteli, yavaş)</option>
+    </select>
+    <label>Görsel boyutu</label>
+    <select id="imgsize">
+      <option value="1024x576">16:9 yatay (1024×576)</option>
+      <option value="1024x1024">Kare (1024×1024)</option>
+    </select>
+    <div class="row" style="margin-top:12px">
+      <button id="clearMem" style="flex:1">Konu hafızasını temizle</button>
+    </div>
+    <div class="sub" id="memInfo"></div>
+  </details>
+
+  <button class="btn-primary" id="go">Bugünün 13 tweet'ini üret</button>
+  <div class="status" id="status"></div>
+  <div class="bar" id="barWrap" style="display:none"><i id="bar"></i></div>
+
+  <div id="cards"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const cards = $('#cards');
+const LS = {
+  get:(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v);}catch(e){return d}},
+  set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))
+};
+
+// --- ayarları geri yükle ---
+$('#key').value    = LS.get('cn_key','') || '';
+$('#model').value  = LS.get('cn_model','gemini-2.5-flash');
+$('#imgsize').value= LS.get('cn_imgsize','1024x576');
+$('#key').oninput    = e=>LS.set('cn_key',e.target.value.trim());
+$('#model').onchange = e=>LS.set('cn_model',e.target.value);
+$('#imgsize').onchange=e=>LS.set('cn_imgsize',e.target.value);
+if(!$('#key').value) $('#settingsBox').open = true;
+
+function refreshMem(){
+  const hist = LS.get('cn_history',[]);
+  $('#memInfo').textContent = `Hafızada ${hist.length} önceki konu (son ~30 gün tekrar edilmez).`;
+}
+refreshMem();
+$('#clearMem').onclick = ()=>{ LS.set('cn_history',[]); refreshMem(); toast('Hafıza temizlendi.'); };
+
+function toast(m,cls=''){ const s=$('#status'); s.className='status '+cls; s.textContent=m; }
+function today(){ return new Date().toISOString().slice(0,10); }
+function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+// ---- Curionaut kuralları (Gemini system prompt) ----
+function buildPrompt(avoidTitles){
+  return `Sen "Curionaut" adlı bir X (Twitter) içerik üreticisisin. Bugünün tarihi ${today()}.
+GÖREV: Tam olarak 13 konu üret. Her konu = 1 İngilizce ana tweet + 1 İngilizce yanıt tweet'i + Türkçe açıklama + görsel prompt + risk işareti.
+
+KATEGORİ DAĞILIMI (tam olarak şu 13):
+3 science, 3 trend, 2 ai-project, 1 story, 1 trivia, 1 dialogue, 1 money, 1 myth.
+
+EN ÖNEMLİ KURAL — OKUMA İSTEĞİ TESTİ (her tweet geçmek ZORUNDA):
+"Bunu Google'da 5 saniyede bulacak biri neden benim tweet'imi okusun?" sorusunun cevabı net olmalı.
+Kuru tanım / ansiklopedi özeti / haber başlığı tekrarı YASAK. Her tweet şunlardan en az birini güçlü versin:
+(1) şaşırtan açı / "hı, bilmiyordum" anı, (2) gizli mekanizma yani neden/nasıl, (3) çarpıcı somut spesifik detay, (4) yeniden çerçeveleme.
+İlk cümle en ilginç parçayı taşısın (hook öne). Yorum kısmı bilgiyi tekrar etmesin, üstüne ışık koysun.
+
+TWEET FORMATI (tweet_en):
+[Bilgi: 1-2 net doğru cümle] + [%70-zeka yorumu: kısa, ulaşılabilir, hafif esprili/çarpıcı gözlem — aşırı entelektüel değil].
+Sonuna 1-3 hashtag doğal biçimde göm. İngilizce. Karakter sınırı yok (X Premium) ama şişirme.
+
+YANIT TWEET'İ (reply_en) — ana tweet'in ALTINA gelecek 2. tweet:
+Üç öğeyi tek tweet'te harmanla: (1) derin açıklama (neden/nasıl), (2) ilginç ek bilgi (ana tweet'te olmayan), (3) sonda etkileşim sorusu.
+Ana tweet'i tekrar etme, ileri taşı. Hashtag gerekmez.
+
+KATEGORİ NOTLARI:
+- science (3): güncel veya evergreen, doğrulanabilir keşif.
+- trend (3): GLOBAL gündem, ABD odaklı DEĞİL; siyaset/skandal/suç/trajedi/magazin ELE. Spor/kültür/bilim-teknoloji; farklı ülkeler.
+- ai-project (2): bugünün AI araçlarıyla gerçekten kurulabilecek somut proje fikri; biraz daha uzun olabilir.
+- story (1): gerçek, doğrulanmış başarı/başarısızlık hikayesi; kısa ve çarpıcı.
+- trivia (1): çoğu kişinin bilmediği, doğrulanmış genel kültür.
+- dialogue (1): gerçekte karşılaşması imkansız iki figürün GERÇEKTEN KONUŞTUĞU kısa hayali sohbet (betimleme DEĞİL!). "Imagine..." ile başla, 2-4 karşılıklı replik (ör. 'Ibn Sina: "..." / Hawking: "..."'). Replikler kişinin bilinen düşünce tarzını yansıtsın ama GERÇEK ALINTI diye sunulmasın. Saygılı, tartışmasız; tarihi figürler tercih. Zeki bir gerilim/uzlaşı olsun.
+- money (1): genel, zamansız para/ekonomi kavramı; "not financial advice" netliği olsun; yatırım tavsiyesi DEĞİL.
+- myth (1): yaygın sanılan ama yanlış olan bir inanışı kaynağıyla çürüt.
+
+GÖRSEL PROMPT (image_prompt, İngilizce):
+Konuyla DOĞRUDAN alakalı + sade + gerçekçi (AI çıktısı belli olmasın). Kullan: candid/documentary photo, natural/soft window light, muted colors, shallow depth of field, subtle film grain, slightly imperfect, everyday scene. KAÇIN: hyperrealistic, 8k, cinematic, glowing, vibrant, octane, concept art. Soyut konuyu somut gerçek sahneye oturt (AI = ahşap masada laptop+kahve). Prompt sonuna EKLE: "with the small word 'Curionaut' in plain white text in the bottom-right corner, no other text, 16:9".
+
+RİSK (risk_flag): "🟢" tartışmasız / "🟡" sayısal-tarih-mutlak-güncel iddia / "🔴" sağlık-finans-hukuk-tartışmalı-kişi iddiası. risk_note: neden + ne yapılmalı (Türkçe, kısa).
+
+TÜRKÇE AÇIKLAMA (explanation_tr): 1-2 cümle, tweet ne diyor + neden ilginç/doğru.
+
+ŞUNLARI TEKRAR ETME (son günlerin konuları): ${avoidTitles.length? avoidTitles.join(' | ') : '(yok)'}
+
+ÇIKTI: SADECE geçerli bir JSON dizisi (13 nesne). Her nesne alanları:
+topic_id ("01".."13"), category, topic_title, tweet_en, reply_en, explanation_tr, image_prompt, risk_flag, risk_note.`;
+}
+
+function tryParse(txt){
+  try{ return JSON.parse(txt); }catch(e){}
+  const s=txt.indexOf('['), en=txt.lastIndexOf(']');
+  if(s>=0&&en>s){ try{ return JSON.parse(txt.slice(s,en+1)); }catch(e){} }
+  return null;
+}
+// Yarıda kesilmiş JSON dizisinden tam olan { ... } nesnelerini tek tek çıkar.
+function salvage(txt){
+  const s=txt.indexOf('['); const body = s<0 ? txt : txt.slice(s+1);
+  const objs=[]; let depth=0,start=-1,inStr=false,esc2=false;
+  for(let i=0;i<body.length;i++){
+    const ch=body[i];
+    if(inStr){ if(esc2)esc2=false; else if(ch==='\\')esc2=true; else if(ch==='"')inStr=false; continue; }
+    if(ch==='"'){inStr=true;continue;}
+    if(ch==='{'){ if(depth===0)start=i; depth++; }
+    else if(ch==='}'){ depth--; if(depth===0&&start>=0){ try{objs.push(JSON.parse(body.slice(start,i+1)));}catch(e){} start=-1; } }
+  }
+  return objs.length?objs:null;
+}
+
+async function callGemini(prompt){
+  const key = ($('#key').value||'').trim();
+  if(!key) throw new Error('Önce Ayarlar\'dan Gemini API anahtarını gir.');
+  const model = $('#model').value;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+  const strObj = {
+    type:'OBJECT',
+    properties:{
+      topic_id:{type:'STRING'}, category:{type:'STRING'}, topic_title:{type:'STRING'},
+      tweet_en:{type:'STRING'}, reply_en:{type:'STRING'}, explanation_tr:{type:'STRING'},
+      image_prompt:{type:'STRING'}, risk_flag:{type:'STRING'}, risk_note:{type:'STRING'}
+    },
+    required:['topic_id','category','topic_title','tweet_en','reply_en','explanation_tr','image_prompt','risk_flag','risk_note']
+  };
+  const is25 = /^gemini-2\.5/.test(model);
+  const gen = {
+    temperature:0.9, topP:0.95,
+    maxOutputTokens: is25 ? 40000 : 8192,   // 2.0-flash üst sınırı 8192
+    responseMimeType:'application/json',
+    responseSchema:{ type:'ARRAY', items:strObj }
+  };
+  // 2.5 modelleri "düşünme" jetonu harcar → cevaba yer kalmaz. Kapat.
+  if(is25) gen.thinkingConfig = { thinkingBudget: 0 };
+
+  const body = { contents:[{role:'user',parts:[{text:prompt}]}], generationConfig:gen };
+  const res = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!res.ok){
+    let msg = res.status+' '+res.statusText;
+    try{ const j=await res.json(); if(j.error&&j.error.message) msg=j.error.message; }catch(e){}
+    throw new Error('Gemini hatası: '+msg);
+  }
+  const data = await res.json();
+  const cand = data && data.candidates && data.candidates[0];
+  const finish = (cand && cand.finishReason) || '';
+  let txt = (cand && cand.content && cand.content.parts ? cand.content.parts.map(p=>p.text).filter(Boolean).join('') : '') || '';
+  txt = txt.trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+
+  if(!txt){
+    if(data && data.promptFeedback && data.promptFeedback.blockReason)
+      throw new Error('İçerik engellendi: '+data.promptFeedback.blockReason+'. Tekrar dene.');
+    throw new Error('Model boş yanıt döndürdü'+(finish?(' ('+finish+')'):'')+'. Tekrar dene.');
+  }
+
+  let arr = tryParse(txt);
+  if(!arr){
+    arr = salvage(txt);
+    if(arr && arr.length) toast(`⚠️ Yanıt yarıda kaldı, ${arr.length} tweet kurtarıldı.`,'');
+  }
+  if(!arr) throw new Error('Model geçerli JSON döndürmedi'+(finish==='MAX_TOKENS'?' (yanıt kesildi)':'')+'. Tekrar dene.');
+  if(!Array.isArray(arr)||!arr.length) throw new Error('Boş sonuç. Tekrar dene.');
+  return arr;
+}
+
+function imgURL(prompt){
+  const [w,h] = $('#imgsize').value.split('x');
+  const seed = Math.floor(Math.random()*1e9);
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&seed=${seed}&model=flux`;
+}
+
+function render(items){
+  cards.innerHTML='';
+  items.forEach((it,i)=>{
+    const c=document.createElement('div'); c.className='card';
+    c.innerHTML=`
+      <span class="cat">${esc(it.category||'')}</span>
+      <span class="flag">${esc(it.risk_flag||'')}</span>
+      <div class="ttl">${esc(it.topic_id||'')} · ${esc(it.topic_title||'')}</div>
+      <div class="imgbox"><span class="ph">görsel yükleniyor…</span></div>
+      <div class="tweet">${esc(it.tweet_en||'')}</div>
+      <div class="reply">↳ ${esc(it.reply_en||'')}</div>
+      <div class="tr">🇹🇷 ${esc(it.explanation_tr||'')}${it.risk_note? ' · ⚠️ '+esc(it.risk_note):''}</div>
+      <div class="acts">
+        <button data-copy="tweet">📋 Tweet'i kopyala</button>
+        <button data-copy="reply">📋 Yanıtı kopyala</button>
+        <button class="x" data-x="1">𝕏 X'te aç</button>
+        <button data-img="new">🔄 Yeni görsel</button>
+        <button data-img="dl">⬇️ Görseli indir</button>
+      </div>`;
+    const box=c.querySelector('.imgbox');
+    const setImg=()=>{
+      box.innerHTML='<span class="ph">görsel yükleniyor…</span>';
+      const im=new Image();
+      im.src=imgURL(it.image_prompt||it.topic_title||'photo');
+      im.onload=()=>{ box.innerHTML=''; box.appendChild(im); };
+      im.onerror=()=>{ box.innerHTML='<span class="ph err">görsel yüklenemedi, 🔄 dene</span>'; };
+      box._url=im.src;
+    };
+    setImg();
+    c.querySelector('[data-x]').onclick=()=>{
+      window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(it.tweet_en||''),'_blank');
+    };
+    c.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{
+      const v=b.dataset.copy==='tweet'?it.tweet_en:it.reply_en;
+      const label=b.dataset.copy==='tweet'?"📋 Tweet'i kopyala":'📋 Yanıtı kopyala';
+      try{ await navigator.clipboard.writeText(v||''); b.textContent='✅ Kopyalandı';
+        setTimeout(()=>b.textContent=label,1200); }catch(e){ alert(v); }
+    });
+    c.querySelector('[data-img="new"]').onclick=setImg;
+    c.querySelector('[data-img="dl"]').onclick=()=>{
+      const a=document.createElement('a'); a.href=box._url;
+      a.download=`curionaut-${it.topic_id||i}.jpg`; a.target='_blank'; a.click();
+    };
+    cards.appendChild(c);
+  });
+}
+
+$('#go').onclick=async()=>{
+  const btn=$('#go');
+  try{
+    btn.disabled=true; toast('Konular üretiliyor… (10-40 sn)');
+    $('#barWrap').style.display='block'; $('#bar').style.width='25%';
+    const hist=LS.get('cn_history',[]);
+    const avoid=hist.slice(-90);
+    const items=await callGemini(buildPrompt(avoid));
+    $('#bar').style.width='80%';
+    render(items);
+    const titles=items.map(x=>x.topic_title).filter(Boolean);
+    LS.set('cn_history', hist.concat(titles).slice(-400));
+    refreshMem();
+    $('#bar').style.width='100%';
+    toast(`✅ ${items.length} tweet hazır. Görseller yükleniyor.`,'');
+    setTimeout(()=>{$('#barWrap').style.display='none';$('#bar').style.width='0';},900);
+  }catch(e){
+    toast(e.message||String(e),'err');
+    $('#barWrap').style.display='none';
+  }finally{ btn.disabled=false; }
+};
+
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
